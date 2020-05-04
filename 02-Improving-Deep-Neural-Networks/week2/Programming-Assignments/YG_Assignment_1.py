@@ -30,7 +30,7 @@ def initialize_parameters(layer_dims):
 
     for l in range(1, L):
         parameters['W' + str(l)] = np.random.randn(layer_dims[l], layer_dims[l-1]) * np.sqrt(2 / layer_dims[l-1])
-        parameters['b' + str(l)] = np.zeros((layer_dims[1], 1))
+        parameters['b' + str(l)] = np.zeros((layer_dims[l], 1))
     return parameters
 
 
@@ -39,10 +39,11 @@ def initialize_optimizer(parameters, optimizer):
     v = dict()
     s = dict()
 
+    # optimizer for each layer in the neural network
     if optimizer == 'momentum':
         for l in range(L):
-            v['dW' + str(l + 1)] = np.zeros(parameters['W' + str( l + 1)].shape) # Vdw matrice has same size as W
-            v['db' + str(l + 1)] = np.zeros(parameters['b' + str(l + 1)])
+            v['dW' + str(l + 1)] = np.zeros(parameters['W' + str(l + 1)].shape) # Vdw matrice has same size as W
+            v['db' + str(l + 1)] = np.zeros(parameters['b' + str(l + 1)].shape)
     elif optimizer == 'adam':
         for l in range(L):
             v['dW' + str(l + 1)] = np.zeros(parameters['W' + str(l + 1)].shape)
@@ -77,7 +78,6 @@ def random_mini_batches(X, y, size, seed=0):
         mini_batch_y = shuffled_y[:, num_of_complete_minibatches * size : ]
         mini_batch = (mini_batch_X, mini_batch_y)
         mini_batches.append(mini_batch)
-
     return mini_batches
 
 # ---------------------------------------------------
@@ -97,7 +97,6 @@ def linear_prop(W, b, A_prev, activation):
     caches = (linear_cache, activation_cache)
     return A, caches
 
-
 def forward_prop(X, parameters):
     L = len(parameters) // 2
     A = X
@@ -112,9 +111,9 @@ def forward_prop(X, parameters):
         f_prop_cache.append(caches)
 
     AL, caches = linear_prop(W=parameters['W' + str(L)],
-                            b=parameters['b' + str(L)],
-                            A_prev=A,
-                            activation='sigmoid')
+                             b=parameters['b' + str(L)],
+                             A_prev=A,  # A value returned on last iteration of hidden layer
+                             activation='sigmoid')
     f_prop_cache.append(caches)
 
     return AL, f_prop_cache
@@ -123,13 +122,12 @@ def forward_prop(X, parameters):
 # ---------------------------------------------------
 # compute loss fx --> no regularization
 # ---------------------------------------------------
-def compute_loss(AL, Y):  # no regularization implemented
+def compute_loss(AL, Y):
     m = Y.shape[1]
     logprobs = np.multiply(Y, np.log(AL)) + np.multiply((1-Y), np.log(1-AL))
     cost = (-1/m) * np.sum(logprobs)
     cost = np.squeeze(cost)
     return cost
-
 
 # ---------------------------------------------------
 # Implement backward propagation
@@ -149,7 +147,7 @@ def linear_activation_backward(dA, cache, activation):
 
     if activation == 'relu':
         dZ = np.array(dA, copy=True)
-        dZ[Z <=0] = 0
+        dZ[Z <= 0] = 0
     elif activation == 'sigmoid':
         s = 1/(1+np.exp(-Z))
         dZ = dA * s * (1-s)
@@ -178,7 +176,6 @@ def backward_prop(AL, Y, caches):
 # ---------------------------------------------------
 # update paramters --> momentim or adam optizimer based
 # ---------------------------------------------------
-
 def update_param_with_momentum(parameters, grads, v, beta, learning_rate):
     L = len(parameters) // 2
     for l in range(L):
@@ -208,31 +205,28 @@ def update_param_with_adam(parameters, grads, v, s, t,  beta1, beta2, epsilon, l
 
         parameters['W' + str(l+1)] = parameters['W' + str(l+1)] - learning_rate * v_corrected['dW' + str(l + 1)] / np.sqrt(s_corrected['dW' + str(l + 1)] + epsilon)
         parameters['b' + str(l + 1)] = parameters['b' + str(l + 1)] - learning_rate * v_corrected['db' + str(l + 1)] / np.sqrt(s_corrected['db' + str(l + 1)] + epsilon)
-
     return parameters, v, s
 
 
-
-def main():
-    train_X, train_Y = load_data()
-
-    layer_dims = [train_X.shape[0], 5, 2, 1]
-    optimizer = 'momentum'
+# ----------------------------------------------------------
+# Aggregate all in model function
+# ----------------------------------------------------------
+def model(X, Y, layer_dims, optimizer, learning_rate=0.0007, mini_batch_size=64, beta1=0.9, beta2=0.999,epsilon=1e-8,
+          num_epochs=10000, print_cost=True):
     seed = 10
-    batch_size = 2**6
-    beta1 = 0.9
-    learning_rate = 0.01
-    t=0
+    t = 0
+    costs = list()
 
+    # start model
     parameters = initialize_parameters(layer_dims=layer_dims)
     v, s = initialize_optimizer(parameters=parameters, optimizer=optimizer)
 
     # optimization loop
     for i in range(num_epochs):  # nb of passes over whole dataset
         seed = seed + 1
-        mini_batches = random_mini_batches(X=train_X, y=train_Y, size=batch_size, seed=seed)
+        mini_batches = random_mini_batches(X=X, y=Y, size=mini_batch_size, seed=seed)
 
-        for mini_batch in mini_batches: # each mini batch has X, y
+        for mini_batch in mini_batches:  # each mini batch has X, y
             mini_batch_X, mini_batch_Y = mini_batch
 
             AL, f_prop_cache = forward_prop(X=mini_batch_X, parameters=parameters)
@@ -247,20 +241,39 @@ def main():
                                                            beta=beta1,
                                                            learning_rate=learning_rate)
             elif optimizer == 'adam':
-                t=t+1
+                t = t + 1
                 parameters, v, s = update_param_with_adam(parameters=parameters,
                                                           grads=grads,
                                                           v=v,
                                                           s=s,
                                                           t=t,
                                                           beta1=beta1,
-                                                          beta2=0.999,
-                                                          epsilon=1e-8)
+                                                          beta2=beta2,
+                                                          epsilon=epsilon,
+                                                          learning_rate=learning_rate)
 
+        # Print the cost every 1000 epoch
+        if print_cost and i % 1000 == 0:
+            print("Cost after epoch %i: %f" % (i, cost))
+        if print_cost and i % 100 == 0:
+            costs.append(cost)
 
+    # plot the cost
+    plt.plot(costs)
+    plt.ylabel('cost')
+    plt.xlabel('epochs (per 100)')
+    plt.title("Learning rate = " + str(learning_rate))
+    plt.show()
 
+    return parameters
 
+def main():
+    train_X, train_Y = load_data()
+    layer_dims = [train_X.shape[0], 5, 2, 1]
+    # optimizer = 'momentum'
+    optimizer = 'adam'
 
+    parameters = model(X=train_X, Y=train_Y, layer_dims=layer_dims, optimizer=optimizer)
 
 if __name__ == '__main__':
     main()
