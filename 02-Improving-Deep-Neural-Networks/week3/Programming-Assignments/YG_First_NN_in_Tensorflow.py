@@ -37,19 +37,8 @@ def create_placeholders(n_x, n_y):
 
 
 def initialize_parameters(layers_dims):
-    """
-    Initializes parameters to build a neural network with tensorflow. The shapes are:
-                        W1 : [25, 12288]
-                        b1 : [25, 1]
-                        W2 : [12, 25]
-                        b2 : [12, 1]
-                        W3 : [6, 12]
-                        b3 : [6, 1]
-
-    Returns:
-    parameters -- a dictionary of tensors containing W1, b1, W2, b2, W3, b3
-    """
-    seed = tf.set_random_seed(1)
+    # Returns: parameters -- a dictionary of tensors containing W1, b1, W2, b2, W3, b3
+    tf.set_random_seed(1)
     parameters = dict()
     # xavier_initializer = np.random.randn(layers_dim[l], layers_dim[l-1]) * np.sqrt(1/layers_dim[l-1])
     L = len(layers_dims)
