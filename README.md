@@ -4,6 +4,8 @@ Dear Developers,
 
 You may find my various projects undertaken by following the course: Deep Learning Specialization provided by Deeplearning.ai
 
+You may find all the videos of the specialization on Deeplearning's page on Youtube.
+
 Each course contains a set of assignments to be completed.
 
    The jupyter notebook files are the original assignments
