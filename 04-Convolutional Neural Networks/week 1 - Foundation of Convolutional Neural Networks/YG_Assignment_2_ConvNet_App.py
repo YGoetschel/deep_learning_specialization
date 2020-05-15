@@ -97,7 +97,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.009, num_epochs=100,
     parameters = initialize_parameters()
     Z3 = forward_propagation(X=X, parameters=parameters)
     cost = compute_cost(ZL=Z3, Y=Y)
-    optimizer = tf.train.AdamOptimizer().minimize(cost)
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
     # Initialize all the variables globally
     init = tf.global_variables_initializer()
